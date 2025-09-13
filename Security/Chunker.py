@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse, json, pathlib, sys, hashlib
 import os
+import uuid
 import math
 from Crypter import derive_key, MAGIC, KEY_SIZE, NONCE_SIZE, SALT_SIZE
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -41,13 +42,13 @@ def split_file(input_file: str, out_dir: str, chunk_size: int = DEFAULT_CHUNK_SI
             if not buf: break
             idx += 1
             h.update(buf)
-            
+
             # Encrypt chunk if passphrase provided
             if passphrase:
                 nonce = secrets.token_bytes(NONCE_SIZE)
                 cipher = AESGCM(key)
                 encrypted_buf = cipher.encrypt(nonce, buf, None)
-                
+
                 # Create encrypted chunk with header
                 header = {
                     "version": 1,
@@ -56,16 +57,23 @@ def split_file(input_file: str, out_dir: str, chunk_size: int = DEFAULT_CHUNK_SI
                 }
                 header_bytes = json.dumps(header, separators=(",",":")).encode("utf-8")
                 header_len = len(header_bytes).to_bytes(4, "big")
-                
+
                 final_buf = MAGIC + header_len + header_bytes + encrypted_buf
                 chunk_size_written = len(final_buf)
             else:
                 final_buf = buf
                 chunk_size_written = len(buf)
-            
-            name = f"chunk_{idx:05d}.part"
+
+            unique_id = uuid.uuid4().hex  # 32-char lowercase hex, globally unique
+            # Use .bin for encrypted, .part for plaintext for clarity
+            ext = ".bin" if passphrase else ".part"
+            name = f"{unique_id}{ext}"
             (outp / name).write_bytes(final_buf)
-            manifest["chunks"].append({"name": name, "size": chunk_size_written})
+            manifest["chunks"].append({
+                "name": name,
+                "size": chunk_size_written,
+                "seq": idx  # preserve original order for joining
+            })
 
     manifest["original_sha256"] = h.hexdigest()
     (outp / "manifest.json").write_text(json.dumps(manifest, indent=2))
@@ -78,6 +86,10 @@ def join_chunks(in_dir: str, output_file: str, passphrase: str = None):
         raise FileNotFoundError("manifest.json not found")
 
     manifest = json.loads(man.read_text())
+    # Ensure chunks are processed in their original sequence if 'seq' is present
+    if manifest.get("chunks") and isinstance(manifest["chunks"], list) and "seq" in manifest["chunks"][0]:
+        manifest["chunks"].sort(key=lambda ch: ch.get("seq", 0))
+
     out_path = pathlib.Path(output_file); out_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Check if chunks are encrypted and validate passphrase
