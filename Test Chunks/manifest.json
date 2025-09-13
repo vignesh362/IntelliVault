@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "original_filename": "vov.pdf",
+  "original_size": 1086638,
+  "original_sha256": "b1005de163bc21159c30ed5cb50a6c3b399c3439eb564410116890105f5f40b8",
+  "chunk_size": 271659,
+  "encrypted": true,
+  "encryption_info": {
+    "algorithm": "AES-256-GCM",
+    "salt_hex": "b85198439a8a03738fe46653a9080b56",
+    "kdf": "scrypt",
+    "n": 16384,
+    "r": 8,
+    "p": 1
+  },
+  "chunks": [
+    {
+      "name": "chunk_00001.part",
+      "size": 271764
+    },
+    {
+      "name": "chunk_00002.part",
+      "size": 271764
+    },
+    {
+      "name": "chunk_00003.part",
+      "size": 271764
+    },
+    {
+      "name": "chunk_00004.part",
+      "size": 271764
+    },
+    {
+      "name": "chunk_00005.part",
+      "size": 107
+    }
+  ]
+}
