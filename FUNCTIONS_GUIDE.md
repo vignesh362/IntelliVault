@@ -382,3 +382,4 @@ These functions can be easily integrated with any frontend framework:
 - **Command Line Tools**: Use functions in CLI scripts
 
 The functions provide a clean, consistent interface that's easy to integrate with any frontend technology.
+
