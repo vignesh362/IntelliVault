@@ -33,9 +33,13 @@ class Qdrant:
     def search(self, query):
         qvec = self.clip_model.encode([query], normalize_embeddings=True)[0].tolist()
         hits = self.client.search(collection_name="files", query_vector=qvec, limit=10)
+        print(hits)
         results = []
         for hit in hits:
             filename = hit.payload.get("filename")
             path = hit.payload.get("path")
             results.append((filename, path))
         return results
+
+qdrant = Qdrant()
+qdrant.search("John Doe")

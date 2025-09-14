@@ -7,6 +7,7 @@ from typing import List, Tuple, Union
 from qdrant_utils import Qdrant
 from PIL import Image
 import torch
+import requests
 
 class FileProcessor:
 
@@ -52,6 +53,7 @@ class FileProcessor:
             results.append((vec, payload))
         elif isinstance(raw, str):
             summary = self.summarizer(raw[:1000], max_length=60, min_length=30, do_sample=False)
+            needs_encryption = self.check_for_encryption(summary[0]['summary_text'])
             vec = self.clip_model.encode([summary[0]['summary_text']], normalize_embeddings=True)[0].tolist()
             payload = {
                 "filename": file_path.name,
@@ -64,5 +66,30 @@ class FileProcessor:
             raise ValueError(f"Unsupported content: {file_path}")
         self.qdrant.insert(results)
         print(f"Successfully processed file: {file_path}")
-        print(f"Created {len(results)} embeddings")
+        return needs_encryption
 
+
+    def check_for_encryption(self, context):
+        url = "http://localhost:1234/v1/chat/completions"
+        headers = {
+            "Content-Type": "application/json"
+        }
+        data = {
+            "model": "llama-3.2-3b-instruct",
+            "messages": [
+                {"role": "system", "content": "You are a helpful assistant which based on the file name and context decide the file should be encrypted or not, just return `True` if needs encryption or return `False`, don't return anything else **Important Just return `True` or `False`**"},
+                {"role": "user", "content": context}
+            ],
+            "temperature": 0.7,
+            "stream": False
+        }
+        response = requests.post(url, headers=headers, json=data)
+        ans = response.json()["choices"][0]["message"]["content"]
+        if ans == "True":
+            return True
+        elif ans == "False":
+            return False
+        return False
+
+file_processor = FileProcessor()
+print(file_processor.embed_file_content("example.txt"))
