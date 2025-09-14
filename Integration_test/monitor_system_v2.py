@@ -14,7 +14,7 @@ import logging
 import threading
 import queue
 from pathlib import Path
-from typing import Optional, Dict, Any, Set
+from typing import Optional, Dict, Any, Set, List, Tuple
 from dataclasses import dataclass
 from concurrent.futures import ThreadPoolExecutor
 import signal
@@ -51,6 +51,10 @@ class MonitorConfig:
     master_password: str = "monitor123"
     chunk_output_dir: str = "monitor_chunks"
     enable_encryption: bool = True
+    
+    # Search configuration
+    search_output_dir: str = "search_results"  # Directory for reconstructed files
+    max_search_results: int = 10               # Default limit for search results
 
 
 class TaskManager:
@@ -188,6 +192,75 @@ class TaskManager:
             logging.error(f"Task '{task_name}' failed on file '{file_path}': {e}")
         finally:
             self.set_task_running(task_name, False)
+    
+    def _search_qdrant(self, query: str, limit: int) -> List[Tuple[str, str]]:
+        """Search Qdrant vector database for similar files."""
+        try:
+            if not self.file_processor or not self.file_processor.qdrant:
+                logging.error("FileProcessor or Qdrant not available for search")
+                return []
+            
+            results = self.file_processor.qdrant.search(query)
+            logging.info(f"Qdrant search returned {len(results)} results for query: '{query}'")
+            return results[:limit]  # Limit results
+        except Exception as e:
+            logging.error(f"Error searching Qdrant: {e}")
+            return []
+    
+    def _check_file_in_database(self, filename: str) -> Optional[Dict]:
+        """Check if file exists in IntelliVault database."""
+        try:
+            if not self.intellivault_api or not self.intellivault_api.authenticated:
+                logging.error("IntelliVault not authenticated for database search")
+                return None
+            
+            # Search for file by filename
+            search_result = self.intellivault_api.search_files(query=filename)
+            if search_result['success'] and search_result['data']['files']:
+                # Return first matching file
+                return search_result['data']['files'][0]
+            return None
+        except Exception as e:
+            logging.error(f"Error checking file in database: {e}")
+            return None
+    
+    def _reconstruct_file_if_needed(self, file_info: Dict) -> Optional[str]:
+        """Reconstruct file from chunks if it's chunked."""
+        try:
+            if not file_info.get('is_chunked', False):
+                # File is not chunked, return original path
+                original_path = file_info.get('original_path')
+                if original_path and os.path.exists(original_path):
+                    return original_path
+                return None
+            
+            # File is chunked, need to reconstruct
+            file_id = file_info['file_id']
+            filename = file_info.get('original_filename') or file_info.get('filename', 'unknown_file')
+            
+            # Create output directory if it doesn't exist
+            output_dir = Path(self.config.search_output_dir)
+            output_dir.mkdir(exist_ok=True)
+            
+            # Create output path
+            output_path = output_dir / filename
+            
+            # Reconstruct file
+            reconstruct_result = self.intellivault_api.reconstruct_file(
+                file_id=file_id,
+                output_path=str(output_path)
+            )
+            
+            if reconstruct_result['success']:
+                logging.info(f"Successfully reconstructed file: {output_path}")
+                return str(output_path)
+            else:
+                logging.error(f"Failed to reconstruct file: {reconstruct_result['message']}")
+                return None
+                
+        except Exception as e:
+            logging.error(f"Error reconstructing file: {e}")
+            return None
 
 
 class IntelliVaultFunctions:
@@ -580,6 +653,69 @@ class MonitorSystem:
             'running_tasks': dict(self.task_manager.running_tasks),
             'monitored_dirs': len(self.monitors['file'].monitored_dirs)
         }
+    
+    def search_files(self, query: str, limit: int = None) -> List[str]:
+        """
+        Search for files using vector similarity and return file paths.
+        
+        Args:
+            query: Search query string
+            limit: Maximum number of results to return (defaults to config.max_search_results)
+            
+        Returns:
+            List of file paths (direct files or reconstructed files)
+        """
+        if not self.running:
+            logging.error("Monitor system is not running. Call start() first.")
+            return []
+        
+        if limit is None:
+            limit = self.config.max_search_results
+        
+        logging.info(f"Starting search for query: '{query}' with limit: {limit}")
+        
+        try:
+            # Step 1: Search Qdrant vector database
+            qdrant_results = self.task_manager._search_qdrant(query, limit)
+            if not qdrant_results:
+                logging.info("No results found in Qdrant search")
+                return []
+            
+            file_paths = []
+            
+            # Step 2: Process each result from Qdrant
+            for filename, path in qdrant_results:
+                logging.debug(f"Processing Qdrant result: {filename} -> {path}")
+                
+                # Step 3: Check if file exists in IntelliVault database
+                db_file = self.task_manager._check_file_in_database(filename)
+                
+                if db_file:
+                    # File found in database
+                    logging.debug(f"File found in database: {filename}")
+                    
+                    # Step 4: Handle file resolution (direct or reconstructed)
+                    resolved_path = self.task_manager._reconstruct_file_if_needed(db_file)
+                    if resolved_path:
+                        file_paths.append(resolved_path)
+                        logging.info(f"Added file to results: {resolved_path}")
+                    else:
+                        logging.warning(f"Could not resolve file path for: {filename}")
+                else:
+                    # File not in database, check if original path exists
+                    logging.debug(f"File not found in database, checking original path: {path}")
+                    if os.path.exists(path):
+                        file_paths.append(path)
+                        logging.info(f"Added direct file to results: {path}")
+                    else:
+                        logging.warning(f"Original file path does not exist: {path}")
+            
+            logging.info(f"Search completed. Found {len(file_paths)} accessible files for query: '{query}'")
+            return file_paths
+            
+        except Exception as e:
+            logging.error(f"Error during search: {e}")
+            return []
     
     def run(self):
         """Run the monitor system until interrupted."""
