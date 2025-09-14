@@ -1,0 +1,12 @@
+topN_ctx: 256
+bg_pool_size: 256
+bg_max_sim: 0.3
+k: 8
+gate_ctx: 0.62
+gate_pos: 0.8
+gate_margin: 0.08
+gate_zpos: 0.5
+auto_enroll_cap: 20
+auto_enroll_min_margin: 0.15
+auto_enroll_consecutive_passes: 2
+gate_zlocal: 0.5

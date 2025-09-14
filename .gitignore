@@ -8,19 +8,18 @@ __pycache__/
 
 # Envs & local tools
 venv/
-.env
 .venv/
+.env
 .python-version
 
 # OS cruft
 .DS_Store
 Thumbs.db
 
-# Data / caches
-*.db
-*.sqlite
-*.sqlite3
+# Data / logs
 *.log
+*.sqlite*
+*.db
 
-# Large/optional
+# Optional: onnx artifacts if big
 st-onnx/
