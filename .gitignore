@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.ipynb_checkpoints/
+
+# Envs & local tools
+venv/
+.env
+.venv/
+.python-version
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Data / caches
+*.db
+*.sqlite
+*.sqlite3
+*.log
+
+# Large/optional
+st-onnx/
