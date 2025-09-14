@@ -7,7 +7,7 @@ class Qdrant:
 
     def __init__(self):
         self.client = QdrantClient(host="127.0.0.1", port=6333)        
-        self.clip_model = SentenceTransformer("clip-ViT-B-32")  # 384-dim
+        self.clip_model = SentenceTransformer("clip-ViT-B-32")
         # self.client.recreate_collection(
         #     collection_name="files",
         #     vectors_config=VectorParams(size=512, distance=Distance.COSINE),
@@ -33,4 +33,9 @@ class Qdrant:
     def search(self, query):
         qvec = self.clip_model.encode([query], normalize_embeddings=True)[0].tolist()
         hits = self.client.search(collection_name="files", query_vector=qvec, limit=10)
-        return hits
+        results = []
+        for hit in hits:
+            filename = hit.payload.get("filename")
+            path = hit.payload.get("path")
+            results.append((filename, path))
+        return results
