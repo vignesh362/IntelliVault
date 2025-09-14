@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "original_filename": "test_large_document.txt",
+  "original_size": 11600,
+  "original_sha256": "c5c4fd40c1a837d3e39050634077c5e825b178f307c94bd284a89bb6da169b1a",
+  "chunk_size": 2900,
+  "encrypted": true,
+  "encryption_info": {
+    "algorithm": "AES-256-GCM",
+    "salt_hex": "1d769a47589046637c4ec7e40d90bca3",
+    "kdf": "scrypt",
+    "n": 16384,
+    "r": 8,
+    "p": 1
+  },
+  "keystroke_auth_required": false,
+  "username": null,
+  "chunks": [
+    {
+      "name": "chunk_00001.part",
+      "size": 3005
+    },
+    {
+      "name": "chunk_00002.part",
+      "size": 3005
+    },
+    {
+      "name": "chunk_00003.part",
+      "size": 3005
+    },
+    {
+      "name": "chunk_00004.part",
+      "size": 3005
+    }
+  ]
+}

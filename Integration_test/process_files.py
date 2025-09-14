@@ -63,6 +63,4 @@ class FileProcessor:
         else:
             raise ValueError(f"Unsupported content: {file_path}")
         self.qdrant.insert(results)
-        print(f"Successfully processed file: {file_path}")
-        print(f"Created {len(results)} embeddings")
 
