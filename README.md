@@ -2,6 +2,10 @@
 
 A secure file chunking and encryption system with comprehensive database tracking and management capabilities.
 
+
+EXE FILE OF THE APPLICATION = https://drive.google.com/file/d/1ie4-wn-EbzuEi_zHKQBvDJX9m7mJwf0z/view?usp=sharing 
+note: unable to upload directly because of the size
+
 ## Features
 
 - **File Chunking**: Split large files into manageable chunks
